@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { X, Vault, Loader2 } from 'lucide-react'
+import { X, FolderLock, Loader2 } from 'lucide-react'
 import { vaultAPI } from '../services/api'
 
 interface CreateVaultModalProps {
@@ -33,7 +33,7 @@ export default function CreateVaultModal({ onClose }: CreateVaultModalProps) {
         <div className="p-6 border-b border-dark-700/50 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-primary-500/20 flex items-center justify-center">
-              <Vault className="w-5 h-5 text-primary-400" />
+              <FolderLock className="w-5 h-5 text-primary-400" />
             </div>
             <h2 className="text-xl font-semibold text-white">Create Vault</h2>
           </div>

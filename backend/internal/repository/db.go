@@ -1,18 +1,36 @@
 package repository
 
 import (
-	"github.com/gotomicro/ego-component/egorm"
+	"github.com/gotomicro/ego/core/econf"
 	"github.com/gotomicro/ego/core/elog"
+	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 
-	"github.com/heartalkai/passwordx/internal/model"
+	"github.com/askuy/passwordx/backend/internal/model"
 )
 
 var db *gorm.DB
 
 // InitDB initializes database connection and runs migrations
 func InitDB() *gorm.DB {
-	db = egorm.Load("mysql.default").Build()
+	dsn := econf.GetString("mysql.default.dsn")
+	debug := econf.GetBool("mysql.default.debug")
+
+	var logLevel logger.LogLevel
+	if debug {
+		logLevel = logger.Info
+	} else {
+		logLevel = logger.Silent
+	}
+
+	var err error
+	db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logLevel),
+	})
+	if err != nil {
+		elog.Panic("failed to connect database", elog.FieldErr(err))
+	}
 
 	// Auto migrate models
 	if err := db.AutoMigrate(

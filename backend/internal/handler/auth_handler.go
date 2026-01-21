@@ -12,7 +12,7 @@ import (
 	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
 
-	"github.com/heartalkai/passwordx/internal/service"
+	"github.com/askuy/passwordx/backend/internal/service"
 )
 
 type AuthHandler struct {
@@ -182,7 +182,7 @@ func (h *AuthHandler) OAuthCallback(c *gin.Context) {
 	// Redirect to frontend with token
 	frontendURL := econf.GetString("app.frontendUrl")
 	if frontendURL == "" {
-		frontendURL = "http://localhost:5173"
+		frontendURL = "http://localhost:3000"
 	}
 	c.Redirect(http.StatusTemporaryRedirect, frontendURL+"/auth/callback?token="+resp.Token)
 }

@@ -62,7 +62,7 @@ export default function Popup() {
             <button
               onClick={() => {
                 // Open web app
-                chrome.tabs.create({ url: 'http://localhost:5173' })
+                chrome.tabs.create({ url: 'http://localhost:3000' })
               }}
               className="p-2 hover:bg-dark-800 rounded-lg"
               title="Open Web App"

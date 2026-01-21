@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import {
   Search,
   Plus,
-  Vault,
+  FolderLock,
   Key,
   Shield,
   Clock,
@@ -107,7 +107,7 @@ export default function DashboardPage() {
         <div className="glass rounded-xl p-6">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-primary-500/20 flex items-center justify-center">
-              <Vault className="w-6 h-6 text-primary-400" />
+              <FolderLock className="w-6 h-6 text-primary-400" />
             </div>
             <div>
               <p className="text-2xl font-bold text-white">{vaults.length}</p>
@@ -156,7 +156,7 @@ export default function DashboardPage() {
 
         {vaults.length === 0 ? (
           <div className="glass rounded-xl p-12 text-center">
-            <Vault className="w-12 h-12 text-dark-600 mx-auto mb-4" />
+            <FolderLock className="w-12 h-12 text-dark-600 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-white mb-2">No vaults yet</h3>
             <p className="text-dark-400 mb-6">
               Create your first vault to start storing passwords securely.
@@ -179,7 +179,7 @@ export default function DashboardPage() {
               >
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-xl bg-primary-500/20 flex items-center justify-center group-hover:bg-primary-500/30 transition-colors">
-                    <Vault className="w-6 h-6 text-primary-400" />
+                    <FolderLock className="w-6 h-6 text-primary-400" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-white truncate group-hover:text-primary-400 transition-colors">

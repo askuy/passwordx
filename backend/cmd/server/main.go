@@ -5,10 +5,10 @@ import (
 	"github.com/gotomicro/ego/core/elog"
 	"github.com/gotomicro/ego/server/egin"
 
-	"github.com/heartalkai/passwordx/internal/handler"
-	"github.com/heartalkai/passwordx/internal/middleware"
-	"github.com/heartalkai/passwordx/internal/repository"
-	"github.com/heartalkai/passwordx/internal/service"
+	"github.com/askuy/passwordx/backend/internal/handler"
+	"github.com/askuy/passwordx/backend/internal/middleware"
+	"github.com/askuy/passwordx/backend/internal/repository"
+	"github.com/askuy/passwordx/backend/internal/service"
 )
 
 func main() {

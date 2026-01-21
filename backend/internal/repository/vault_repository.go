@@ -5,7 +5,7 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/heartalkai/passwordx/internal/model"
+	"github.com/askuy/passwordx/backend/internal/model"
 )
 
 type VaultRepository struct {

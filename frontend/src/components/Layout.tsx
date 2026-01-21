@@ -3,7 +3,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   LayoutDashboard,
-  Vault,
+  FolderLock,
   Settings,
   LogOut,
   Plus,
@@ -135,7 +135,7 @@ export default function Layout() {
                     }
                   `}
                 >
-                  <Vault className="w-5 h-5" />
+                  <FolderLock className="w-5 h-5" />
                   <span className="font-medium truncate">{vault.name}</span>
                 </Link>
               ))}

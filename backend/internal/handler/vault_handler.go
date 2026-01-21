@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/heartalkai/passwordx/internal/middleware"
-	"github.com/heartalkai/passwordx/internal/service"
+	"github.com/askuy/passwordx/backend/internal/middleware"
+	"github.com/askuy/passwordx/backend/internal/service"
 )
 
 type VaultHandler struct {

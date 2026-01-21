@@ -50,7 +50,7 @@ cd chrome-extension && npm install && npm run build
 ```
 
 **访问地址：**
-- 前端: http://localhost:5173
+- 前端: http://localhost:3000
 - 后端API: http://localhost:8080
 - Chrome扩展: 在 `chrome://extensions/` 加载 `chrome-extension/dist` 目录
 
@@ -92,7 +92,7 @@ npm install
 npm run dev
 ```
 
-前端默认运行在 http://localhost:5173
+前端默认运行在 http://localhost:3000
 
 ### 4. 构建Chrome扩展
 

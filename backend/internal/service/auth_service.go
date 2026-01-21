@@ -10,9 +10,9 @@ import (
 	"github.com/gotomicro/ego/core/econf"
 	"gorm.io/gorm"
 
-	"github.com/heartalkai/passwordx/internal/model"
-	"github.com/heartalkai/passwordx/internal/pkg/crypto"
-	"github.com/heartalkai/passwordx/internal/repository"
+	"github.com/askuy/passwordx/backend/internal/model"
+	"github.com/askuy/passwordx/backend/internal/pkg/crypto"
+	"github.com/askuy/passwordx/backend/internal/repository"
 )
 
 var (
