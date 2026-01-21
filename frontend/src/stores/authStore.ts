@@ -7,6 +7,7 @@ interface User {
   name: string
   avatar?: string
   tenant_id: number
+  master_key_salt?: string
 }
 
 interface Tenant {

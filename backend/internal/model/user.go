@@ -10,7 +10,7 @@ type User struct {
 	TenantID      int64     `gorm:"index;not null" json:"tenant_id"`
 	Email         string    `gorm:"size:255;uniqueIndex;not null" json:"email"`
 	PasswordHash  string    `gorm:"size:255" json:"-"`
-	MasterKeySalt string    `gorm:"size:64" json:"-"`
+	MasterKeySalt string    `gorm:"size:64" json:"master_key_salt,omitempty"`
 	OAuthProvider string    `gorm:"size:50" json:"oauth_provider,omitempty"`
 	OAuthID       string    `gorm:"size:255" json:"-"`
 	Name          string    `gorm:"size:255" json:"name"`
