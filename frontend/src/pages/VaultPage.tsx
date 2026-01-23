@@ -13,6 +13,7 @@ import {
   Edit,
   Loader2,
   RefreshCw,
+  Lock,
 } from 'lucide-react'
 import { vaultAPI, credentialAPI } from '../services/api'
 import { encrypt, decrypt, getMasterKey, generatePassword, calculatePasswordStrength } from '../utils/crypto'
@@ -53,6 +54,9 @@ export default function VaultPage() {
     },
   })
 
+  const masterKey = getMasterKey()
+  const isLocked = !masterKey
+
   const { data: credentials, isLoading } = useQuery({
     queryKey: ['credentials', vaultId],
     queryFn: async () => {
@@ -61,7 +65,10 @@ export default function VaultPage() {
 
       // Decrypt credentials
       const key = getMasterKey()
-      if (!key) return creds.map((c) => ({ ...c, title: c.title_encrypted, password: '••••••••' }))
+      if (!key) {
+        // Return empty list when locked - user needs to re-login
+        return []
+      }
 
       const decrypted = await Promise.all(
         creds.map(async (cred): Promise<DecryptedCredential> => {
@@ -86,6 +93,7 @@ export default function VaultPage() {
 
       return decrypted
     },
+    enabled: !isLocked,
   })
 
   const deleteMutation = useMutation({
@@ -120,18 +128,34 @@ export default function VaultPage() {
       </div>
 
       {/* Actions */}
-      <div className="flex justify-end mb-6 animate-fade-in" style={{ animationDelay: '0.05s' }}>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-500 transition-colors font-medium"
-        >
-          <Plus className="w-4 h-4" />
-          Add Credential
-        </button>
-      </div>
+      {!isLocked && (
+        <div className="flex justify-end mb-6 animate-fade-in" style={{ animationDelay: '0.05s' }}>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl hover:bg-primary-500 transition-colors font-medium"
+          >
+            <Plus className="w-4 h-4" />
+            Add Credential
+          </button>
+        </div>
+      )}
 
       {/* Credentials list */}
-      {isLoading ? (
+      {isLocked ? (
+        <div className="glass rounded-xl p-12 text-center">
+          <Lock className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-white mb-2">Vault Locked</h3>
+          <p className="text-dark-400 mb-6">
+            Your session has expired. Please sign in again to access your passwords.
+          </p>
+          <a
+            href="/login"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-500 transition-colors font-medium"
+          >
+            Sign In
+          </a>
+        </div>
+      ) : isLoading ? (
         <div className="glass rounded-xl p-12 text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary-400" />
           <p className="text-dark-400 mt-4">Loading credentials...</p>

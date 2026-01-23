@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
@@ -8,10 +8,10 @@ import {
   Key,
   Shield,
   Clock,
-  TrendingUp,
 } from 'lucide-react'
 import { vaultAPI, credentialAPI } from '../services/api'
 import CreateVaultModal from '../components/CreateVaultModal'
+import { decrypt, getMasterKey } from '../utils/crypto'
 
 interface VaultItem {
   id: number
@@ -28,9 +28,18 @@ interface Credential {
   created_at: string
 }
 
+interface DecryptedCredential {
+  id: number
+  vault_id: number
+  title: string
+  url?: string
+  created_at: string
+}
+
 export default function DashboardPage() {
   const [showCreateVault, setShowCreateVault] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [decryptedResults, setDecryptedResults] = useState<DecryptedCredential[]>([])
 
   const { data: vaultsData } = useQuery({
     queryKey: ['vaults'],
@@ -40,15 +49,59 @@ export default function DashboardPage() {
     },
   })
 
-  const { data: searchResults, isLoading: isSearching } = useQuery({
-    queryKey: ['credentials-search', searchQuery],
+  // Fetch all credentials (search will be done client-side after decryption)
+  const { data: allCredentials, isLoading: isSearching } = useQuery({
+    queryKey: ['credentials-search'],
     queryFn: async () => {
-      if (!searchQuery.trim()) return null
-      const res = await credentialAPI.search(searchQuery)
+      const res = await credentialAPI.search('')
       return res.data.credentials as Credential[]
     },
     enabled: searchQuery.length > 0,
   })
+
+  // Decrypt and filter credentials when search query or credentials change
+  useEffect(() => {
+    const decryptAndFilter = async () => {
+      if (!searchQuery.trim() || !allCredentials) {
+        setDecryptedResults([])
+        return
+      }
+
+      const masterKey = getMasterKey()
+      if (!masterKey) {
+        setDecryptedResults([])
+        return
+      }
+
+      const decrypted: DecryptedCredential[] = []
+      const lowerQuery = searchQuery.toLowerCase()
+
+      for (const cred of allCredentials) {
+        try {
+          const title = await decrypt(cred.title_encrypted, masterKey)
+          const url = cred.url_encrypted ? await decrypt(cred.url_encrypted, masterKey) : undefined
+
+          // Filter by title or URL
+          if (title.toLowerCase().includes(lowerQuery) || 
+              (url && url.toLowerCase().includes(lowerQuery))) {
+            decrypted.push({
+              id: cred.id,
+              vault_id: cred.vault_id,
+              title,
+              url,
+              created_at: cred.created_at,
+            })
+          }
+        } catch {
+          // Skip credentials that fail to decrypt
+        }
+      }
+
+      setDecryptedResults(decrypted)
+    }
+
+    decryptAndFilter()
+  }, [searchQuery, allCredentials])
 
   const vaults = vaultsData || []
   const totalCredentials = vaults.length * 5 // Placeholder, would need actual count
@@ -79,19 +132,24 @@ export default function DashboardPage() {
           <div className="mt-4 glass rounded-xl p-4">
             {isSearching ? (
               <p className="text-dark-400">Searching...</p>
-            ) : searchResults && searchResults.length > 0 ? (
+            ) : decryptedResults.length > 0 ? (
               <div className="space-y-2">
                 <p className="text-sm text-dark-500 mb-3">
-                  Found {searchResults.length} result(s)
+                  Found {decryptedResults.length} result(s)
                 </p>
-                {searchResults.map((cred) => (
+                {decryptedResults.map((cred) => (
                   <Link
                     key={cred.id}
                     to={`/vault/${cred.vault_id}`}
                     className="flex items-center gap-3 p-3 rounded-lg hover:bg-dark-800 transition-colors"
                   >
                     <Key className="w-5 h-5 text-primary-400" />
-                    <span className="text-white">{cred.title_encrypted}</span>
+                    <div className="flex flex-col">
+                      <span className="text-white">{cred.title}</span>
+                      {cred.url && (
+                        <span className="text-xs text-dark-500">{cred.url}</span>
+                      )}
+                    </div>
                   </Link>
                 ))}
               </div>

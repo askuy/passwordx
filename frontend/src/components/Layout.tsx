@@ -7,7 +7,6 @@ import {
   Settings,
   LogOut,
   Plus,
-  ChevronDown,
   Shield,
   Menu,
   X,

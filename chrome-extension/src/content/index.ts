@@ -203,17 +203,22 @@ const observer = new MutationObserver(() => {
   addPasswordXIcons()
 })
 
-// Start observing
-observer.observe(document.body, {
-  childList: true,
-  subtree: true,
-})
+// Initialize when DOM is ready
+function init() {
+  if (document.body) {
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    })
+    addPasswordXIcons()
+  }
+}
 
-// Initial scan
+// Start observing when ready
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', addPasswordXIcons)
+  document.addEventListener('DOMContentLoaded', init)
 } else {
-  addPasswordXIcons()
+  init()
 }
 
 // Notify that content script is loaded

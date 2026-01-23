@@ -177,3 +177,8 @@ redirectUrl = "http://localhost:8080/api/auth/oauth/github/callback"
 ## 许可证
 
 MIT
+
+
+使用方案2
+
+好的，我来帮你配置 CRXJS Vite Plugin。

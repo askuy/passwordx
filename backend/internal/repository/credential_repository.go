@@ -49,14 +49,12 @@ func (r *CredentialRepository) ListByTenantID(ctx context.Context, tenantID int6
 	return credentials, err
 }
 
+// SearchByURL is deprecated - searching encrypted data doesn't work
+// This method now returns all credentials and filtering should be done client-side after decryption
 func (r *CredentialRepository) SearchByURL(ctx context.Context, tenantID int64, userID int64, urlPattern string) ([]model.Credential, error) {
-	var credentials []model.Credential
-	err := r.db.WithContext(ctx).
-		Joins("JOIN vault_members ON vault_members.vault_id = credentials.vault_id").
-		Where("credentials.tenant_id = ? AND vault_members.user_id = ?", tenantID, userID).
-		Where("credentials.url_encrypted LIKE ?", "%"+urlPattern+"%").
-		Find(&credentials).Error
-	return credentials, err
+	// Since URL is encrypted, we cannot search on it server-side
+	// Return all credentials and let the client filter after decryption
+	return r.ListByUserVaults(ctx, tenantID, userID)
 }
 
 func (r *CredentialRepository) ListByUserVaults(ctx context.Context, tenantID int64, userID int64) ([]model.Credential, error) {
