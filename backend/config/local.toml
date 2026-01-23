@@ -1,5 +1,6 @@
 [app]
 mode = "dev"
+disableRegistration = true  # Set to true to disable public registration
 
 [server.http]
 host = "0.0.0.0"

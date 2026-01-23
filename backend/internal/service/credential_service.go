@@ -49,12 +49,16 @@ type UpdateCredentialRequest struct {
 
 // Create creates a new credential in a vault
 func (s *CredentialService) Create(ctx context.Context, vaultID, tenantID, userID int64, req *CreateCredentialRequest) (*model.Credential, error) {
-	// Check vault access
-	hasAccess, err := s.vaultMemberRepo.HasAccess(ctx, vaultID, userID)
+	// Check if user has edit permission (owner, admin, or editor can create)
+	member, err := s.vaultMemberRepo.GetByVaultAndUser(ctx, vaultID, userID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrCredentialAccessDenied
+		}
 		return nil, err
 	}
-	if !hasAccess {
+
+	if !model.CanEditCredentials(member.Role) {
 		return nil, ErrCredentialAccessDenied
 	}
 
@@ -87,12 +91,16 @@ func (s *CredentialService) Get(ctx context.Context, credentialID, userID int64)
 		return nil, err
 	}
 
-	// Check vault access
-	hasAccess, err := s.vaultMemberRepo.HasAccess(ctx, credential.VaultID, userID)
+	// Check if user has view permission
+	member, err := s.vaultMemberRepo.GetByVaultAndUser(ctx, credential.VaultID, userID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrCredentialAccessDenied
+		}
 		return nil, err
 	}
-	if !hasAccess {
+
+	if !model.CanViewCredentials(member.Role) {
 		return nil, ErrCredentialAccessDenied
 	}
 
@@ -101,12 +109,16 @@ func (s *CredentialService) Get(ctx context.Context, credentialID, userID int64)
 
 // List returns all credentials in a vault
 func (s *CredentialService) List(ctx context.Context, vaultID, userID int64) ([]model.Credential, error) {
-	// Check vault access
-	hasAccess, err := s.vaultMemberRepo.HasAccess(ctx, vaultID, userID)
+	// Check if user has view permission
+	member, err := s.vaultMemberRepo.GetByVaultAndUser(ctx, vaultID, userID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrCredentialAccessDenied
+		}
 		return nil, err
 	}
-	if !hasAccess {
+
+	if !model.CanViewCredentials(member.Role) {
 		return nil, ErrCredentialAccessDenied
 	}
 
@@ -123,12 +135,16 @@ func (s *CredentialService) Update(ctx context.Context, credentialID, userID int
 		return nil, err
 	}
 
-	// Check vault access
-	hasAccess, err := s.vaultMemberRepo.HasAccess(ctx, credential.VaultID, userID)
+	// Check if user has edit permission (owner, admin, or editor can edit)
+	member, err := s.vaultMemberRepo.GetByVaultAndUser(ctx, credential.VaultID, userID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrCredentialAccessDenied
+		}
 		return nil, err
 	}
-	if !hasAccess {
+
+	if !model.CanEditCredentials(member.Role) {
 		return nil, ErrCredentialAccessDenied
 	}
 
@@ -171,12 +187,16 @@ func (s *CredentialService) Delete(ctx context.Context, credentialID, userID int
 		return err
 	}
 
-	// Check vault access (only admin and owner can delete)
-	hasRole, err := s.vaultMemberRepo.HasRole(ctx, credential.VaultID, userID, []string{model.VaultRoleOwner, model.VaultRoleAdmin})
+	// Check if user has delete permission (only owner and admin can delete)
+	member, err := s.vaultMemberRepo.GetByVaultAndUser(ctx, credential.VaultID, userID)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrCredentialAccessDenied
+		}
 		return err
 	}
-	if !hasRole {
+
+	if !model.CanDeleteCredentials(member.Role) {
 		return ErrCredentialAccessDenied
 	}
 

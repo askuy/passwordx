@@ -68,3 +68,22 @@ func (r *UserRepository) ExistsByEmail(ctx context.Context, email string) (bool,
 	err := r.db.WithContext(ctx).Model(&model.User{}).Where("email = ?", email).Count(&count).Error
 	return count > 0, err
 }
+
+// ListByRole returns all users with a specific role
+func (r *UserRepository) ListByRole(ctx context.Context, role string) ([]model.User, error) {
+	var users []model.User
+	err := r.db.WithContext(ctx).Where("role = ?", role).Find(&users).Error
+	return users, err
+}
+
+// ListAll returns all users (for super admin)
+func (r *UserRepository) ListAll(ctx context.Context) ([]model.User, error) {
+	var users []model.User
+	err := r.db.WithContext(ctx).Find(&users).Error
+	return users, err
+}
+
+// UpdateStatus updates a user's status
+func (r *UserRepository) UpdateStatus(ctx context.Context, id int64, status string) error {
+	return r.db.WithContext(ctx).Model(&model.User{}).Where("id = ?", id).Update("status", status).Error
+}

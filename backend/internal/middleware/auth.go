@@ -7,6 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gotomicro/ego/core/econf"
+
+	"github.com/askuy/passwordx/backend/internal/model"
+	"github.com/askuy/passwordx/backend/internal/repository"
 )
 
 type AuthMiddleware struct {
@@ -93,4 +96,79 @@ func GetEmail(c *gin.Context) string {
 		return v.(string)
 	}
 	return ""
+}
+
+// GetUser extracts full user object from gin context
+func GetUser(c *gin.Context) *model.User {
+	if v, exists := c.Get("user"); exists {
+		return v.(*model.User)
+	}
+	return nil
+}
+
+// RequireUser middleware loads the full user object and stores it in context
+func RequireUser(userRepo *repository.UserRepository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := GetUserID(c)
+		if userID == 0 {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "user not authenticated"})
+			c.Abort()
+			return
+		}
+
+		user, err := userRepo.GetByID(c.Request.Context(), userID)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+			c.Abort()
+			return
+		}
+
+		// Check if user is active
+		if user.Status != model.UserStatusActive {
+			c.JSON(http.StatusForbidden, gin.H{"error": "account is not active"})
+			c.Abort()
+			return
+		}
+
+		c.Set("user", user)
+		c.Next()
+	}
+}
+
+// RequireRole middleware checks if the user has one of the required roles
+func RequireRole(roles ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user := GetUser(c)
+		if user == nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "user not loaded"})
+			c.Abort()
+			return
+		}
+
+		hasRole := false
+		for _, role := range roles {
+			if user.Role == role {
+				hasRole = true
+				break
+			}
+		}
+
+		if !hasRole {
+			c.JSON(http.StatusForbidden, gin.H{"error": "insufficient permissions"})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
+// RequireSuperAdmin middleware ensures only super admins can access the route
+func RequireSuperAdmin() gin.HandlerFunc {
+	return RequireRole(model.UserRoleSuperAdmin)
+}
+
+// RequireAdmin middleware ensures only admins (super_admin or admin) can access the route
+func RequireAdmin() gin.HandlerFunc {
+	return RequireRole(model.UserRoleSuperAdmin, model.UserRoleAdmin)
 }

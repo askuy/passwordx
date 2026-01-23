@@ -65,11 +65,14 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	resp, err := h.authService.Register(c.Request.Context(), &req)
 	if err != nil {
-		if err == service.ErrUserExists {
+		switch err {
+		case service.ErrUserExists:
 			c.JSON(http.StatusConflict, gin.H{"error": "user already exists"})
-			return
+		case service.ErrRegistrationDisabled:
+			c.JSON(http.StatusForbidden, gin.H{"error": "registration is disabled"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -86,11 +89,16 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	resp, err := h.authService.Login(c.Request.Context(), &req)
 	if err != nil {
-		if err == service.ErrInvalidCredentials {
+		switch err {
+		case service.ErrInvalidCredentials:
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid email or password"})
-			return
+		case service.ErrUserInactive:
+			c.JSON(http.StatusForbidden, gin.H{"error": "account is inactive"})
+		case service.ErrUserNotInvited:
+			c.JSON(http.StatusForbidden, gin.H{"error": "please complete your account activation first"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -172,18 +180,29 @@ func (h *AuthHandler) OAuthCallback(c *gin.Context) {
 		return
 	}
 
-	// Login or register user
+	// Login user (only existing users allowed)
 	resp, err := h.authService.OAuthLogin(c.Request.Context(), provider, oauthID, email, name, avatar)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
 
-	// Redirect to frontend with token
 	frontendURL := econf.GetString("app.frontendUrl")
 	if frontendURL == "" {
 		frontendURL = "http://localhost:3000"
 	}
+
+	if err != nil {
+		var errorMsg string
+		switch err {
+		case service.ErrUserNotInvited:
+			errorMsg = "not_invited"
+		case service.ErrUserInactive:
+			errorMsg = "inactive"
+		default:
+			errorMsg = "error"
+		}
+		c.Redirect(http.StatusTemporaryRedirect, frontendURL+"/auth/callback?error="+errorMsg)
+		return
+	}
+
+	// Redirect to frontend with token
 	c.Redirect(http.StatusTemporaryRedirect, frontendURL+"/auth/callback?token="+resp.Token)
 }
 

@@ -25,7 +25,9 @@ var (
 	tenantHandler     *handler.TenantHandler
 	vaultHandler      *handler.VaultHandler
 	credentialHandler *handler.CredentialHandler
+	userHandler       *handler.UserHandler
 	authMiddleware    *middleware.AuthMiddleware
+	userRepo          *repository.UserRepository
 )
 
 func initDependencies() error {
@@ -33,7 +35,7 @@ func initDependencies() error {
 	db := repository.InitDB()
 
 	// Initialize repositories
-	userRepo := repository.NewUserRepository(db)
+	userRepo = repository.NewUserRepository(db)
 	tenantRepo := repository.NewTenantRepository(db)
 	vaultRepo := repository.NewVaultRepository(db)
 	credentialRepo := repository.NewCredentialRepository(db)
@@ -44,12 +46,14 @@ func initDependencies() error {
 	tenantService := service.NewTenantService(tenantRepo, userRepo)
 	vaultService := service.NewVaultService(vaultRepo, vaultMemberRepo)
 	credentialService := service.NewCredentialService(credentialRepo, vaultMemberRepo)
+	userService := service.NewUserService(userRepo, tenantRepo)
 
 	// Initialize handlers
 	authHandler = handler.NewAuthHandler(authService)
 	tenantHandler = handler.NewTenantHandler(tenantService)
 	vaultHandler = handler.NewVaultHandler(vaultService)
 	credentialHandler = handler.NewCredentialHandler(credentialService)
+	userHandler = handler.NewUserHandler(userService, userRepo)
 
 	// Initialize middleware
 	authMiddleware = middleware.NewAuthMiddleware()
@@ -79,6 +83,9 @@ func newHTTPServer() *egin.Component {
 	protected := api.Group("")
 	protected.Use(authMiddleware.JWT())
 	{
+		// User routes (get current user info)
+		protected.GET("/me", userHandler.GetMe)
+
 		// Tenant routes
 		tenants := protected.Group("/tenants")
 		{
@@ -110,6 +117,22 @@ func newHTTPServer() *egin.Component {
 
 		// Search credentials across all vaults
 		protected.GET("/credentials/search", credentialHandler.Search)
+
+		// Admin routes (user management)
+		admin := protected.Group("/admin")
+		admin.Use(middleware.RequireUser(userRepo))
+		admin.Use(middleware.RequireAdmin())
+		{
+			users := admin.Group("/users")
+			{
+				users.POST("", userHandler.Create)
+				users.GET("", userHandler.List)
+				users.GET("/:id", userHandler.Get)
+				users.PUT("/:id", userHandler.Update)
+				users.DELETE("/:id", userHandler.Delete)
+				users.POST("/:id/reset-password", userHandler.ResetPassword)
+			}
+		}
 	}
 
 	return server

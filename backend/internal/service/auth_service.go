@@ -16,9 +16,12 @@ import (
 )
 
 var (
-	ErrUserExists         = errors.New("user already exists")
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrUserNotFound       = errors.New("user not found")
+	ErrUserExists           = errors.New("user already exists")
+	ErrInvalidCredentials   = errors.New("invalid credentials")
+	ErrUserNotFound         = errors.New("user not found")
+	ErrRegistrationDisabled = errors.New("registration is disabled")
+	ErrUserNotInvited       = errors.New("user not invited, please contact administrator")
+	ErrUserInactive         = errors.New("user account is inactive")
 )
 
 type AuthService struct {
@@ -66,6 +69,11 @@ type Claims struct {
 
 // Register creates a new user with a new tenant
 func (s *AuthService) Register(ctx context.Context, req *RegisterRequest) (*AuthResponse, error) {
+	// Check if registration is disabled
+	if econf.GetBool("app.disableRegistration") {
+		return nil, ErrRegistrationDisabled
+	}
+
 	// Check if user already exists
 	exists, err := s.userRepo.ExistsByEmail(ctx, req.Email)
 	if err != nil {
@@ -105,13 +113,16 @@ func (s *AuthService) Register(ctx context.Context, req *RegisterRequest) (*Auth
 		return nil, err
 	}
 
-	// Create user
+	// Create user with default role and status
 	user := &model.User{
 		TenantID:      tenant.ID,
 		Email:         req.Email,
 		Name:          req.Name,
 		PasswordHash:  passwordHash,
 		MasterKeySalt: salt,
+		Role:          model.UserRoleUser,
+		AccountType:   model.AccountTypeTeam,
+		Status:        model.UserStatusActive,
 	}
 	if err := s.userRepo.Create(ctx, user); err != nil {
 		return nil, err
@@ -141,6 +152,14 @@ func (s *AuthService) Login(ctx context.Context, req *LoginRequest) (*AuthRespon
 		return nil, err
 	}
 
+	// Check user status
+	if user.Status == model.UserStatusInactive {
+		return nil, ErrUserInactive
+	}
+	if user.Status == model.UserStatusInvited {
+		return nil, ErrUserNotInvited
+	}
+
 	// Verify password
 	if !crypto.VerifyPasswordBcrypt(req.Password, user.PasswordHash) {
 		return nil, ErrInvalidCredentials
@@ -167,6 +186,8 @@ func (s *AuthService) Login(ctx context.Context, req *LoginRequest) (*AuthRespon
 }
 
 // OAuthLogin handles OAuth authentication
+// Only allows existing users (invited or active) to login via OAuth
+// Does not allow automatic user creation - users must be invited by admin first
 func (s *AuthService) OAuthLogin(ctx context.Context, provider, oauthID, email, name, avatar string) (*AuthResponse, error) {
 	// Try to find existing user by OAuth
 	user, err := s.userRepo.GetByOAuth(ctx, provider, oauthID)
@@ -177,56 +198,44 @@ func (s *AuthService) OAuthLogin(ctx context.Context, provider, oauthID, email, 
 	var tenant *model.Tenant
 
 	if user == nil {
-		// Check if user exists by email
+		// Check if user exists by email (must be pre-created/invited by admin)
 		user, err = s.userRepo.GetByEmail(ctx, email)
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				// User not found - must be invited by admin first
+				return nil, ErrUserNotInvited
+			}
 			return nil, err
 		}
 
-		if user != nil {
-			// Link OAuth to existing user
-			user.OAuthProvider = provider
-			user.OAuthID = oauthID
-			if user.Avatar == "" && avatar != "" {
-				user.Avatar = avatar
-			}
-			if err := s.userRepo.Update(ctx, user); err != nil {
-				return nil, err
-			}
-			tenant, err = s.tenantRepo.GetByID(ctx, user.TenantID)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			// Create new tenant and user
-			tenantSlug := strings.ToLower(strings.ReplaceAll(name, " ", "-")) + "-" + oauthID[:8]
-			tenant = &model.Tenant{
-				Name: name + "'s Workspace",
-				Slug: tenantSlug,
-			}
-			if err := s.tenantRepo.Create(ctx, tenant); err != nil {
-				return nil, err
-			}
+		// Check user status
+		if user.Status == model.UserStatusInactive {
+			return nil, ErrUserInactive
+		}
 
-			salt, err := crypto.GenerateSalt()
-			if err != nil {
-				return nil, err
-			}
-
-			user = &model.User{
-				TenantID:      tenant.ID,
-				Email:         email,
-				Name:          name,
-				Avatar:        avatar,
-				OAuthProvider: provider,
-				OAuthID:       oauthID,
-				MasterKeySalt: salt,
-			}
-			if err := s.userRepo.Create(ctx, user); err != nil {
-				return nil, err
-			}
+		// Link OAuth to existing user
+		user.OAuthProvider = provider
+		user.OAuthID = oauthID
+		if user.Avatar == "" && avatar != "" {
+			user.Avatar = avatar
+		}
+		// If user was invited, activate them now
+		if user.Status == model.UserStatusInvited {
+			user.Status = model.UserStatusActive
+		}
+		if err := s.userRepo.Update(ctx, user); err != nil {
+			return nil, err
+		}
+		tenant, err = s.tenantRepo.GetByID(ctx, user.TenantID)
+		if err != nil {
+			return nil, err
 		}
 	} else {
+		// Check user status
+		if user.Status == model.UserStatusInactive {
+			return nil, ErrUserInactive
+		}
+
 		tenant, err = s.tenantRepo.GetByID(ctx, user.TenantID)
 		if err != nil {
 			return nil, err

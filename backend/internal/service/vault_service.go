@@ -11,8 +11,10 @@ import (
 )
 
 var (
-	ErrVaultNotFound     = errors.New("vault not found")
-	ErrVaultAccessDenied = errors.New("vault access denied")
+	ErrVaultNotFound          = errors.New("vault not found")
+	ErrVaultAccessDenied      = errors.New("vault access denied")
+	ErrPersonalVaultNoMembers = errors.New("personal vaults cannot have additional members")
+	ErrInvalidVaultRole       = errors.New("invalid vault role")
 )
 
 type VaultService struct {
@@ -31,6 +33,7 @@ type CreateVaultRequest struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description"`
 	Icon        string `json:"icon"`
+	IsPersonal  bool   `json:"is_personal"` // true = personal vault (only owner can see)
 }
 
 type UpdateVaultRequest struct {
@@ -41,7 +44,7 @@ type UpdateVaultRequest struct {
 
 type AddMemberRequest struct {
 	UserID int64  `json:"user_id" binding:"required"`
-	Role   string `json:"role" binding:"required,oneof=admin member"`
+	Role   string `json:"role" binding:"required,oneof=admin editor viewer"`
 }
 
 // Create creates a new vault and adds the creator as owner
@@ -51,13 +54,19 @@ func (s *VaultService) Create(ctx context.Context, tenantID, userID int64, req *
 		Name:        req.Name,
 		Description: req.Description,
 		Icon:        req.Icon,
+		IsPersonal:  req.IsPersonal,
+	}
+
+	// For personal vaults, set the owner ID directly
+	if req.IsPersonal {
+		vault.OwnerID = userID
 	}
 
 	if err := s.vaultRepo.Create(ctx, vault); err != nil {
 		return nil, err
 	}
 
-	// Add creator as owner
+	// Add creator as owner (for both personal and team vaults)
 	member := &model.VaultMember{
 		VaultID: vault.ID,
 		UserID:  userID,
@@ -72,21 +81,29 @@ func (s *VaultService) Create(ctx context.Context, tenantID, userID int64, req *
 
 // Get retrieves a vault by ID with access check
 func (s *VaultService) Get(ctx context.Context, vaultID, userID int64) (*model.Vault, error) {
-	// Check access
-	hasAccess, err := s.vaultMemberRepo.HasAccess(ctx, vaultID, userID)
-	if err != nil {
-		return nil, err
-	}
-	if !hasAccess {
-		return nil, ErrVaultAccessDenied
-	}
-
 	vault, err := s.vaultRepo.GetByIDWithMembers(ctx, vaultID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrVaultNotFound
 		}
 		return nil, err
+	}
+
+	// For personal vaults, only the owner can access
+	if vault.IsPersonal {
+		if vault.OwnerID != userID {
+			return nil, ErrVaultAccessDenied
+		}
+		return vault, nil
+	}
+
+	// For team vaults, check membership
+	hasAccess, err := s.vaultMemberRepo.HasAccess(ctx, vaultID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if !hasAccess {
+		return nil, ErrVaultAccessDenied
 	}
 
 	return vault, nil
@@ -149,6 +166,25 @@ func (s *VaultService) Delete(ctx context.Context, vaultID, userID int64) error 
 
 // AddMember adds a member to a vault
 func (s *VaultService) AddMember(ctx context.Context, vaultID, userID int64, req *AddMemberRequest) (*model.VaultMember, error) {
+	// Get vault to check if it's personal
+	vault, err := s.vaultRepo.GetByID(ctx, vaultID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrVaultNotFound
+		}
+		return nil, err
+	}
+
+	// Personal vaults cannot have additional members
+	if vault.IsPersonal {
+		return nil, ErrPersonalVaultNoMembers
+	}
+
+	// Validate role
+	if req.Role != model.VaultRoleAdmin && req.Role != model.VaultRoleEditor && req.Role != model.VaultRoleViewer {
+		return nil, ErrInvalidVaultRole
+	}
+
 	// Check if requesting user is admin or owner
 	hasRole, err := s.vaultMemberRepo.HasRole(ctx, vaultID, userID, []string{model.VaultRoleOwner, model.VaultRoleAdmin})
 	if err != nil {
@@ -161,6 +197,10 @@ func (s *VaultService) AddMember(ctx context.Context, vaultID, userID int64, req
 	// Check if member already exists
 	existing, err := s.vaultMemberRepo.GetByVaultAndUser(ctx, vaultID, req.UserID)
 	if err == nil && existing != nil {
+		// Cannot change owner's role
+		if existing.Role == model.VaultRoleOwner {
+			return nil, errors.New("cannot change owner's role")
+		}
 		// Update role
 		existing.Role = req.Role
 		if err := s.vaultMemberRepo.Update(ctx, existing); err != nil {
