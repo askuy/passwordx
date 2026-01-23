@@ -126,7 +126,7 @@ function fillField(value: string) {
 }
 
 // Listen for messages from popup/background
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === 'FILL_CREDENTIAL') {
     fillCredential(message.username, message.password)
     sendResponse({ success: true })

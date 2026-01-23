@@ -1,7 +1,7 @@
 // Background service worker for PasswordX Chrome Extension
 
 // Listen for messages from popup or content scripts
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === 'GET_CREDENTIALS') {
     // Handle credential retrieval
     handleGetCredentials(message.url).then(sendResponse)
@@ -16,15 +16,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 })
 
 // Handle get credentials request
-async function handleGetCredentials(url: string) {
+async function handleGetCredentials(_url: string) {
   try {
     const storage = await chrome.storage.local.get(['token'])
     if (!storage.token) {
       return { success: false, error: 'Not authenticated' }
     }
 
+    // Fetch all credentials (URL filtering should be done client-side after decryption)
     const response = await fetch(
-      `http://localhost:8080/api/credentials/search?q=${encodeURIComponent(url)}`,
+      `http://localhost:8080/api/credentials/search`,
       {
         headers: {
           Authorization: `Bearer ${storage.token}`,

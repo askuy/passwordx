@@ -10,11 +10,9 @@ import {
   Loader2,
   Eye,
   EyeOff,
-  Settings,
   RefreshCw,
 } from 'lucide-react'
 import { useAuthStore, type Credential } from './store'
-import { deriveKey, decrypt, getMasterKey, setMasterKey } from '../utils/crypto'
 
 type View = 'login' | 'unlock' | 'main' | 'generator'
 
@@ -30,17 +28,19 @@ export default function Popup() {
         setCurrentUrl(tabs[0].url)
       }
     })
+  }, [])
 
+  useEffect(() => {
     // Determine view based on auth state
     if (isAuthenticated && isUnlocked) {
       setView('main')
-      fetchCredentials(currentUrl)
+      fetchCredentials()
     } else if (isAuthenticated && !isUnlocked) {
       setView('unlock')
     } else {
       setView('login')
     }
-  }, [isAuthenticated, isUnlocked, currentUrl])
+  }, [isAuthenticated, isUnlocked])
 
   return (
     <div className="min-h-[400px] flex flex-col">

@@ -28,7 +28,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<boolean>
   unlock: (password: string) => Promise<boolean>
   logout: () => void
-  fetchCredentials: (currentUrl?: string) => Promise<void>
+  fetchCredentials: () => Promise<void>
 }
 
 const API_BASE = 'http://localhost:8080/api'
@@ -98,13 +98,13 @@ export const useAuthStore = create<AuthState>()(
         })
       },
 
-      fetchCredentials: async (currentUrl?: string) => {
+      fetchCredentials: async () => {
         const { token, isUnlocked } = get()
         if (!token || !isUnlocked) return
 
         try {
-          // Fetch all credentials from user's vaults
-          const res = await fetch(`${API_BASE}/credentials/search?q=${encodeURIComponent(currentUrl || '')}`, {
+          // Fetch all credentials from user's vaults (no URL filter - filtering done client-side after decryption)
+          const res = await fetch(`${API_BASE}/credentials/search`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
