@@ -3,12 +3,14 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { Shield, Mail, Lock, Loader2, Github } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
+import { useSettingsStore } from '../stores/settingsStore'
 import { authAPI } from '../services/api'
 import { deriveKey, setMasterKey } from '../utils/crypto'
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const { setAuth } = useAuthStore()
+  const { disableRegistration } = useSettingsStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
@@ -142,13 +144,15 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Register link */}
-        <p className="text-center mt-6 text-dark-400 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          Don't have an account?{' '}
-          <Link to="/register" className="text-primary-400 hover:text-primary-300 font-medium">
-            Sign up
-          </Link>
-        </p>
+        {/* Register link - only show if registration is enabled */}
+        {!disableRegistration && (
+          <p className="text-center mt-6 text-dark-400 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            Don't have an account?{' '}
+            <Link to="/register" className="text-primary-400 hover:text-primary-300 font-medium">
+              Sign up
+            </Link>
+          </p>
+        )}
       </div>
     </div>
   )

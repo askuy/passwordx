@@ -32,6 +32,11 @@ api.interceptors.response.use(
   }
 )
 
+// Settings API
+export const settingsAPI = {
+  getPublic: () => api.get<{ disable_registration: boolean }>('/settings'),
+}
+
 // Auth API
 export const authAPI = {
   register: (data: {
@@ -99,6 +104,31 @@ export const tenantAPI = {
   update: (id: number, data: { name?: string; slug?: string }) =>
     api.put(`/tenants/${id}`, data),
   delete: (id: number) => api.delete(`/tenants/${id}`),
+}
+
+// User Management API (Admin only)
+export const userAPI = {
+  list: (tenantId?: number) =>
+    api.get('/admin/users', { params: tenantId ? { tenant_id: tenantId } : {} }),
+  get: (id: number) => api.get(`/admin/users/${id}`),
+  create: (data: {
+    email: string
+    name: string
+    password?: string
+    account_type: string
+    tenant_id?: number
+    role?: string
+  }) => api.post('/admin/users', data),
+  update: (id: number, data: { name?: string; role?: string; status?: string }) =>
+    api.put(`/admin/users/${id}`, data),
+  delete: (id: number) => api.delete(`/admin/users/${id}`),
+  resetPassword: (id: number, password: string) =>
+    api.post(`/admin/users/${id}/reset-password`, { password }),
+}
+
+// Current user API
+export const meAPI = {
+  get: () => api.get('/me'),
 }
 
 export default api

@@ -1,15 +1,16 @@
-package main
+package cmdinit
 
 import (
+	"context"
 	"errors"
-	"flag"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/askuy/passwordx/backend/cmd"
 	"github.com/gotomicro/ego"
 	"github.com/gotomicro/ego/core/elog"
-	"github.com/gotomicro/ego/task/ejob"
+	"github.com/spf13/cobra"
 	"gorm.io/gorm"
 
 	"github.com/askuy/passwordx/backend/internal/model"
@@ -23,32 +24,43 @@ var (
 	name     string
 )
 
+var CmdRun = &cobra.Command{
+	Use:                "init",
+	Short:              "init passwordx",
+	Long:               `init passwordx`,
+	Run:                CmdFunc,
+	DisableFlagParsing: true,
+}
+
 func init() {
-	flag.StringVar(&email, "email", "", "Admin email address (required)")
-	flag.StringVar(&password, "password", "", "Admin password (required, min 8 characters)")
-	flag.StringVar(&name, "name", "Super Admin", "Admin display name")
+	cmd.RootCommand.AddCommand(CmdRun)
 }
 
-func main() {
-	flag.Parse()
-
-	if err := ego.New().Job(ejob.Job("init-user", initUser)).Run(); err != nil {
-		elog.Panic("init user failed", elog.FieldErr(err))
+func CmdFunc(cmd *cobra.Command, args []string) {
+	if err := ego.New().
+		Invoker(func() error {
+			initUser()
+			return nil
+		}).
+		Run(); err != nil {
+		elog.Panic("startup failed", elog.FieldErr(err))
 	}
 }
 
-func initUser(ctx ejob.Context) error {
+func initUser() error {
 	// Validate required parameters
-	if email == "" {
-		fmt.Println("Error: --email is required")
-		fmt.Println("Usage: go run cmd/init/main.go --config=config/config.toml --email=admin@example.com --password=xxx [--name=\"Admin\"]")
-		os.Exit(1)
-	}
-	if password == "" {
-		fmt.Println("Error: --password is required")
-		fmt.Println("Usage: go run cmd/init/main.go --config=config/config.toml --email=admin@example.com --password=xxx [--name=\"Admin\"]")
-		os.Exit(1)
-	}
+	//if email == "" {
+	//	fmt.Println("Error: --email is required")
+	//	fmt.Println("Usage: go run cmd/init/main.go --config=config/config.toml --email=admin@example.com --password=xxx [--name=\"Admin\"]")
+	//	os.Exit(1)
+	//}
+	//if password == "" {
+	//	fmt.Println("Error: --password is required")
+	//	fmt.Println("Usage: go run cmd/init/main.go --config=config/config.toml --email=admin@example.com --password=xxx [--name=\"Admin\"]")
+	//	os.Exit(1)
+	//}
+	email = "admin@passworx.com"
+	password = "passwordx"
 	if len(password) < 8 {
 		fmt.Println("Error: password must be at least 8 characters")
 		os.Exit(1)
@@ -60,7 +72,7 @@ func initUser(ctx ejob.Context) error {
 	userRepo := repository.NewUserRepository(db)
 
 	// Use background context for database operations
-	stdCtx := ctx.Ctx
+	stdCtx := context.Background()
 
 	// Check if super admin already exists
 	existingUsers, err := userRepo.ListByRole(stdCtx, model.UserRoleSuperAdmin)

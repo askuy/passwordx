@@ -15,12 +15,14 @@ import (
 type UserHandler struct {
 	userService *service.UserService
 	userRepo    *repository.UserRepository
+	tenantRepo  *repository.TenantRepository
 }
 
-func NewUserHandler(userService *service.UserService, userRepo *repository.UserRepository) *UserHandler {
+func NewUserHandler(userService *service.UserService, userRepo *repository.UserRepository, tenantRepo *repository.TenantRepository) *UserHandler {
 	return &UserHandler{
 		userService: userService,
 		userRepo:    userRepo,
+		tenantRepo:  tenantRepo,
 	}
 }
 
@@ -230,7 +232,7 @@ func (h *UserHandler) ResetPassword(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "password reset successfully"})
 }
 
-// GetMe gets the current user's info
+// GetMe gets the current user's info along with tenant
 func (h *UserHandler) GetMe(c *gin.Context) {
 	currentUser, err := h.getCurrentUser(c)
 	if err != nil {
@@ -238,5 +240,15 @@ func (h *UserHandler) GetMe(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, currentUser)
+	// Also fetch tenant info
+	tenant, err := h.tenantRepo.GetByID(c.Request.Context(), currentUser.TenantID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to get tenant"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"user":   currentUser,
+		"tenant": tenant,
+	})
 }

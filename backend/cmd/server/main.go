@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"github.com/gotomicro/ego"
@@ -11,7 +11,7 @@ import (
 	"github.com/askuy/passwordx/backend/internal/service"
 )
 
-func main() {
+func Server() {
 	if err := ego.New().
 		Invoker(initDependencies).
 		Serve(newHTTPServer()).
@@ -26,8 +26,10 @@ var (
 	vaultHandler      *handler.VaultHandler
 	credentialHandler *handler.CredentialHandler
 	userHandler       *handler.UserHandler
+	settingsHandler   *handler.SettingsHandler
 	authMiddleware    *middleware.AuthMiddleware
 	userRepo          *repository.UserRepository
+	tenantRepo        *repository.TenantRepository
 )
 
 func initDependencies() error {
@@ -36,7 +38,7 @@ func initDependencies() error {
 
 	// Initialize repositories
 	userRepo = repository.NewUserRepository(db)
-	tenantRepo := repository.NewTenantRepository(db)
+	tenantRepo = repository.NewTenantRepository(db)
 	vaultRepo := repository.NewVaultRepository(db)
 	credentialRepo := repository.NewCredentialRepository(db)
 	vaultMemberRepo := repository.NewVaultMemberRepository(db)
@@ -53,7 +55,8 @@ func initDependencies() error {
 	tenantHandler = handler.NewTenantHandler(tenantService)
 	vaultHandler = handler.NewVaultHandler(vaultService)
 	credentialHandler = handler.NewCredentialHandler(credentialService)
-	userHandler = handler.NewUserHandler(userService, userRepo)
+	userHandler = handler.NewUserHandler(userService, userRepo, tenantRepo)
+	settingsHandler = handler.NewSettingsHandler()
 
 	// Initialize middleware
 	authMiddleware = middleware.NewAuthMiddleware()
@@ -70,6 +73,9 @@ func newHTTPServer() *egin.Component {
 	// Public routes
 	api := server.Group("/api")
 	{
+		// Public settings (no auth required)
+		api.GET("/settings", settingsHandler.GetPublicSettings)
+
 		auth := api.Group("/auth")
 		{
 			auth.POST("/register", authHandler.Register)

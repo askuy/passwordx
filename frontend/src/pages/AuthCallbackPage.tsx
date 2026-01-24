@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Shield, Loader2 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
+import api from '../services/api'
 
 export default function AuthCallbackPage() {
   const navigate = useNavigate()
@@ -10,28 +11,57 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const token = searchParams.get('token')
-    if (token) {
-      // Decode JWT to get user info (simple base64 decode for payload)
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        // For OAuth users, we might not have full user data in token
-        // In production, you'd make an API call to get full user details
-        const user = {
-          id: payload.user_id,
-          email: payload.email,
-          name: payload.email.split('@')[0],
-          tenant_id: payload.tenant_id,
-        }
-        const tenant = {
-          id: payload.tenant_id,
-          name: 'Workspace',
-          slug: 'workspace',
-        }
-        setAuth(token, user, tenant)
-        navigate('/dashboard')
-      } catch {
-        navigate('/login')
+    const error = searchParams.get('error')
+
+    if (error) {
+      // Handle OAuth errors
+      if (error === 'not_invited') {
+        alert('You need to be invited by an administrator to access this application.')
+      } else if (error === 'inactive') {
+        alert('Your account is inactive. Please contact an administrator.')
       }
+      navigate('/login')
+      return
+    }
+
+    if (token) {
+      // Set token first so the API can use it
+      // Then fetch full user data from /me endpoint
+      const fetchUserData = async () => {
+        try {
+          // Set authorization header for this request
+          const res = await api.get('/me', {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          const { user, tenant } = res.data
+          setAuth(token, user, tenant || { id: user.tenant_id, name: 'Workspace', slug: 'workspace' })
+          navigate('/dashboard')
+        } catch {
+          // Fallback: decode JWT to get basic user info
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]))
+            const user = {
+              id: payload.user_id,
+              email: payload.email,
+              name: payload.email.split('@')[0],
+              tenant_id: payload.tenant_id,
+              role: 'user',
+              account_type: 'team',
+              status: 'active',
+            }
+            const tenant = {
+              id: payload.tenant_id,
+              name: 'Workspace',
+              slug: 'workspace',
+            }
+            setAuth(token, user, tenant)
+            navigate('/dashboard')
+          } catch {
+            navigate('/login')
+          }
+        }
+      }
+      fetchUserData()
     } else {
       navigate('/login')
     }

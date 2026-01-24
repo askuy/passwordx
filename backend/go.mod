@@ -6,6 +6,7 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/gotomicro/ego v1.2.1
+	github.com/spf13/cobra v0.0.3
 	golang.org/x/crypto v0.23.0
 	golang.org/x/oauth2 v0.16.0
 	gorm.io/driver/mysql v1.5.2
@@ -46,6 +47,7 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gotomicro/logrotate v0.0.0-20211108034117-46d53eedc960 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -68,6 +70,7 @@ require (
 	github.com/savsgio/gotils v0.0.0-20230208104028-c358bd845dee // indirect
 	github.com/shirou/gopsutil/v3 v3.21.6 // indirect
 	github.com/spf13/cast v1.4.1 // indirect
+	github.com/spf13/pflag v1.0.1 // indirect
 	github.com/stoewer/go-strcase v1.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
 	github.com/tklauser/numcpus v0.2.2 // indirect

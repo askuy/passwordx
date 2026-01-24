@@ -8,6 +8,9 @@ interface User {
   avatar?: string
   tenant_id: number
   master_key_salt?: string
+  role: string
+  account_type: string
+  status: string
 }
 
 interface Tenant {

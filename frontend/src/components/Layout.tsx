@@ -10,6 +10,7 @@ import {
   Shield,
   Menu,
   X,
+  Users,
 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import { vaultAPI } from '../services/api'
@@ -43,8 +44,12 @@ export default function Layout() {
     navigate('/login')
   }
 
+  // Check if user is admin
+  const isAdmin = user?.role === 'super_admin' || user?.role === 'admin'
+
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+    ...(isAdmin ? [{ icon: Users, label: 'Members', path: '/members' }] : []),
     { icon: Settings, label: 'Settings', path: '/settings' },
   ]
 
